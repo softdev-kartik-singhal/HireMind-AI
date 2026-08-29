@@ -9,22 +9,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ToastProvider, useToast } from '@/context/ToastContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { apiClient } from '@/lib/api-client';
-
-// Data models & seeds
-import {
-  INITIAL_CANDIDATE_APPLICATIONS,
-  INITIAL_CANDIDATE_INTERVIEWS,
-  INITIAL_CANDIDATE_TESTS,
-  INITIAL_RECRUITER_JOBS,
-  INITIAL_RECRUITER_CANDIDATES,
-  INITIAL_RECRUITER_INTERVIEWS,
-  CandidateApplication,
-  CandidateInterview,
-  CandidateTest,
-  RecruiterJob,
-  RecruiterCandidate,
-  RecruiterInterviewSession,
-} from '@/lib/dashboard-data';
+import { DashboardApi } from '@/lib/api-dashboard';
 
 // Candidate views
 import { CandidateDashboardView } from '@/components/dashboard/candidate/CandidateDashboardView';
@@ -67,28 +52,16 @@ function DashboardContent() {
   const [isScheduleInterviewOpen, setIsScheduleInterviewOpen] = useState(false);
   const [targetCandidateName, setTargetCandidateName] = useState<string>('');
 
-  // Interactive Seed Stores
-  const [candidateApps] = useState<CandidateApplication[]>(INITIAL_CANDIDATE_APPLICATIONS);
-  const [candidateInterviews] = useState<CandidateInterview[]>(INITIAL_CANDIDATE_INTERVIEWS);
-  const [candidateTests] = useState<CandidateTest[]>(INITIAL_CANDIDATE_TESTS);
-
-  const [recruiterJobs, setRecruiterJobs] = useState<RecruiterJob[]>(INITIAL_RECRUITER_JOBS);
-  const [recruiterCandidates] = useState<RecruiterCandidate[]>(INITIAL_RECRUITER_CANDIDATES);
-  const [recruiterInterviews, setRecruiterInterviews] = useState<RecruiterInterviewSession[]>(
-    INITIAL_RECRUITER_INTERVIEWS
-  );
-
   // Admin state
   const [adminUsersCount, setAdminUsersCount] = useState(1);
   const [systemHealth, setSystemHealth] = useState<any>(null);
 
   useEffect(() => {
-    // Reset to dashboard tab when role changes
     setActiveTab('dashboard');
 
     if (user?.role === 'ADMIN') {
-      apiClient.get('/users?limit=50').then((res) => {
-        setAdminUsersCount(res.data?.data?.length || 1);
+      DashboardApi.getAdminAnalytics().then((res) => {
+        if (res) setAdminUsersCount(res.usersCount || 1);
       }).catch(() => {});
 
       apiClient.get('/health').then((res) => {
@@ -96,14 +69,6 @@ function DashboardContent() {
       }).catch(() => {});
     }
   }, [user?.role]);
-
-  const handleAddJob = (job: RecruiterJob) => {
-    setRecruiterJobs((prev) => [job, ...prev]);
-  };
-
-  const handleAddInterview = (interview: RecruiterInterviewSession) => {
-    setRecruiterInterviews((prev) => [interview, ...prev]);
-  };
 
   const handleOpenScheduleForCandidate = (candName?: string) => {
     if (candName) setTargetCandidateName(candName);
@@ -114,11 +79,11 @@ function DashboardContent() {
   const getTabTitle = (tab: string) => {
     const titles: Record<string, string> = {
       dashboard: 'Dashboard',
+      jobs: 'Tech Jobs',
       applications: 'My Applications',
       interviews: 'Interviews',
       tests: 'Coding Tests',
       results: 'Evaluations & Results',
-      jobs: 'Job Requisitions',
       candidates: 'Candidate Pool',
       reports: 'Reports',
       analytics: 'Analytics',
@@ -170,16 +135,13 @@ function DashboardContent() {
               <>
                 {activeTab === 'dashboard' && (
                   <CandidateDashboardView
-                    applications={candidateApps}
-                    interviews={candidateInterviews}
-                    tests={candidateTests}
                     onNavigateTab={setActiveTab}
                   />
                 )}
                 {activeTab === 'jobs' && (
                   <CandidateJobsView
                     onApplicationSubmitted={() => {
-                      // optional callback
+                      setActiveTab('applications');
                     }}
                   />
                 )}
@@ -188,12 +150,8 @@ function DashboardContent() {
                     onNavigateToJobs={() => setActiveTab('jobs')}
                   />
                 )}
-                {activeTab === 'interviews' && (
-                  <CandidateInterviewsView interviews={candidateInterviews} />
-                )}
-                {activeTab === 'tests' && (
-                  <CandidateTestsView tests={candidateTests} />
-                )}
+                {activeTab === 'interviews' && <CandidateInterviewsView />}
+                {activeTab === 'tests' && <CandidateTestsView />}
                 {activeTab === 'results' && <CandidateResultsView />}
                 {activeTab === 'profile' && (
                   <div className="text-center p-8">
@@ -212,9 +170,6 @@ function DashboardContent() {
               <>
                 {activeTab === 'dashboard' && (
                   <RecruiterDashboardView
-                    jobs={recruiterJobs}
-                    candidates={recruiterCandidates}
-                    interviews={recruiterInterviews}
                     onNavigateTab={setActiveTab}
                     onOpenCreateJob={() => setIsCreateJobOpen(true)}
                     onOpenScheduleInterview={() => {
@@ -232,16 +187,13 @@ function DashboardContent() {
                 )}
                 {activeTab === 'candidates' && (
                   <RecruiterCandidatesView
-                    candidates={recruiterCandidates}
                     onOpenScheduleInterview={handleOpenScheduleForCandidate}
                   />
                 )}
                 {activeTab === 'interviews' && (
                   <RecruiterInterviewsView
-                    interviews={recruiterInterviews}
                     isScheduleModalOpen={isScheduleInterviewOpen}
                     onCloseScheduleModal={() => setIsScheduleInterviewOpen(false)}
-                    onAddInterview={handleAddInterview}
                     initialCandidateName={targetCandidateName}
                   />
                 )}

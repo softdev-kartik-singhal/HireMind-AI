@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/apiError.js';
 import { CreateJobInput, UpdateJobInput, GetJobsQuery, JobStatusType } from '../validations/jobValidations.js';
-import { Prisma } from '@prisma/client';
+import { JobStatus, JobExperienceLevel, JobEmploymentType, Prisma } from '@prisma/client';
 import { UserRoleType, USER_ROLES } from '../constants/roles.js';
 
 export class JobService {
@@ -15,13 +15,13 @@ export class JobService {
         department: input.department,
         description: input.description,
         responsibilities: input.responsibilities,
-        requiredSkills: JSON.stringify(input.requiredSkills),
-        preferredSkills: JSON.stringify(input.preferredSkills || []),
-        experienceLevel: input.experienceLevel,
+        requiredSkills: input.requiredSkills,
+        preferredSkills: input.preferredSkills || [],
+        experienceLevel: input.experienceLevel as JobExperienceLevel,
         location: input.location,
-        employmentType: input.employmentType,
+        employmentType: input.employmentType as JobEmploymentType,
         salaryRange: input.salaryRange || null,
-        status: input.status,
+        status: input.status as JobStatus,
         applicationDeadline: input.applicationDeadline ? new Date(input.applicationDeadline) : null,
         recruiterId,
       },
@@ -40,11 +40,7 @@ export class JobService {
       },
     });
 
-    return {
-      ...job,
-      requiredSkills: JSON.parse(job.requiredSkills || '[]'),
-      preferredSkills: JSON.parse(job.preferredSkills || '[]'),
-    };
+    return job;
   }
 
   /**
@@ -59,9 +55,9 @@ export class JobService {
 
     // For Candidates or Unauthenticated, only show ACTIVE jobs
     if (!userRole || userRole === USER_ROLES.CANDIDATE) {
-      where.status = 'ACTIVE';
+      where.status = JobStatus.ACTIVE;
     } else if (query.status) {
-      where.status = query.status;
+      where.status = query.status as JobStatus;
     }
 
     if (query.recruiterId) {
@@ -69,27 +65,27 @@ export class JobService {
     }
 
     if (query.department) {
-      where.department = { equals: query.department };
+      where.department = { equals: query.department, mode: 'insensitive' };
     }
 
     if (query.location) {
-      where.location = { contains: query.location };
+      where.location = { contains: query.location, mode: 'insensitive' };
     }
 
     if (query.experienceLevel) {
-      where.experienceLevel = query.experienceLevel;
+      where.experienceLevel = query.experienceLevel as JobExperienceLevel;
     }
 
     if (query.employmentType) {
-      where.employmentType = query.employmentType;
+      where.employmentType = query.employmentType as JobEmploymentType;
     }
 
     if (query.search) {
       where.OR = [
-        { title: { contains: query.search } },
-        { description: { contains: query.search } },
-        { department: { contains: query.search } },
-        { requiredSkills: { contains: query.search } },
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { department: { contains: query.search, mode: 'insensitive' } },
+        { requiredSkills: { has: query.search } },
       ];
     }
 
@@ -127,28 +123,11 @@ export class JobService {
     ]);
 
     return {
-      jobs: jobs.map((job) => {
-        let parsedReq = [];
-        let parsedPref = [];
-        try {
-          parsedReq = typeof job.requiredSkills === 'string' ? JSON.parse(job.requiredSkills) : job.requiredSkills;
-        } catch {
-          parsedReq = [];
-        }
-        try {
-          parsedPref = typeof job.preferredSkills === 'string' ? JSON.parse(job.preferredSkills) : job.preferredSkills;
-        } catch {
-          parsedPref = [];
-        }
-
-        return {
-          ...job,
-          requiredSkills: parsedReq,
-          preferredSkills: parsedPref,
-          hasApplied: job.applications ? job.applications.length > 0 : false,
-          userApplication: job.applications && job.applications.length > 0 ? job.applications[0] : null,
-        };
-      }),
+      jobs: jobs.map((job) => ({
+        ...job,
+        hasApplied: job.applications ? job.applications.length > 0 : false,
+        userApplication: job.applications && job.applications.length > 0 ? job.applications[0] : null,
+      })),
       pagination: {
         total,
         page,
@@ -193,23 +172,8 @@ export class JobService {
       throw ApiError.notFound('Job requisition not found');
     }
 
-    let parsedReq = [];
-    let parsedPref = [];
-    try {
-      parsedReq = typeof job.requiredSkills === 'string' ? JSON.parse(job.requiredSkills) : job.requiredSkills;
-    } catch {
-      parsedReq = [];
-    }
-    try {
-      parsedPref = typeof job.preferredSkills === 'string' ? JSON.parse(job.preferredSkills) : job.preferredSkills;
-    } catch {
-      parsedPref = [];
-    }
-
     return {
       ...job,
-      requiredSkills: parsedReq,
-      preferredSkills: parsedPref,
       hasApplied: job.applications ? job.applications.length > 0 : false,
       userApplication: job.applications && job.applications.length > 0 ? job.applications[0] : null,
     };
@@ -236,13 +200,13 @@ export class JobService {
         ...(input.department && { department: input.department }),
         ...(input.description && { description: input.description }),
         ...(input.responsibilities && { responsibilities: input.responsibilities }),
-        ...(input.requiredSkills && { requiredSkills: JSON.stringify(input.requiredSkills) }),
-        ...(input.preferredSkills !== undefined && { preferredSkills: JSON.stringify(input.preferredSkills) }),
-        ...(input.experienceLevel && { experienceLevel: input.experienceLevel }),
+        ...(input.requiredSkills && { requiredSkills: input.requiredSkills }),
+        ...(input.preferredSkills !== undefined && { preferredSkills: input.preferredSkills }),
+        ...(input.experienceLevel && { experienceLevel: input.experienceLevel as JobExperienceLevel }),
         ...(input.location && { location: input.location }),
-        ...(input.employmentType && { employmentType: input.employmentType }),
+        ...(input.employmentType && { employmentType: input.employmentType as JobEmploymentType }),
         ...(input.salaryRange !== undefined && { salaryRange: input.salaryRange }),
-        ...(input.status && { status: input.status }),
+        ...(input.status && { status: input.status as JobStatus }),
         ...(input.applicationDeadline !== undefined && {
           applicationDeadline: input.applicationDeadline ? new Date(input.applicationDeadline) : null,
         }),
@@ -257,24 +221,7 @@ export class JobService {
       },
     });
 
-    let parsedReq = [];
-    let parsedPref = [];
-    try {
-      parsedReq = typeof updatedJob.requiredSkills === 'string' ? JSON.parse(updatedJob.requiredSkills) : updatedJob.requiredSkills;
-    } catch {
-      parsedReq = [];
-    }
-    try {
-      parsedPref = typeof updatedJob.preferredSkills === 'string' ? JSON.parse(updatedJob.preferredSkills) : updatedJob.preferredSkills;
-    } catch {
-      parsedPref = [];
-    }
-
-    return {
-      ...updatedJob,
-      requiredSkills: parsedReq,
-      preferredSkills: parsedPref,
-    };
+    return updatedJob;
   }
 
   /**
@@ -297,7 +244,7 @@ export class JobService {
 
     const updated = await prisma.job.update({
       where: { id },
-      data: { status },
+      data: { status: status as JobStatus },
     });
 
     return updated;

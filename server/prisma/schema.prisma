@@ -8,12 +8,78 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum UserRole {
+  CANDIDATE
+  RECRUITER
+  ADMIN
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum JobExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+  EXECUTIVE
+}
+
+enum JobEmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  REJECTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InterviewType {
+  TECHNICAL
+  SYSTEM_DESIGN
+  LIVE_CODING
+  BEHAVIORAL
+  AI_SCREENING
+}
+
+enum TestDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum TestStatus {
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
 model User {
   id           String      @id @default(uuid())
   name         String
   email        String      @unique
   passwordHash String
-  role         String      @default("CANDIDATE")
+  role         UserRole    @default(CANDIDATE)
   avatar       String?
   bio          String?
   headline     String?
@@ -21,10 +87,16 @@ model User {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-  postedJobs          Job[]                 @relation("RecruiterJobs")
-  applications        Application[]         @relation("CandidateApplications")
+  refreshTokens          RefreshToken[]
+  passwordResetTokens    PasswordResetToken[]
+  postedJobs             Job[]                 @relation("RecruiterJobs")
+  applications           Application[]         @relation("CandidateApplications")
+  candidateInterviews    Interview[]           @relation("CandidateInterviews")
+  recruiterInterviews    Interview[]           @relation("RecruiterInterviews")
+  assignedTests          CodingTest[]          @relation("CandidateTests")
+  assessmentResults      AssessmentResult[]    @relation("CandidateResults")
+  conductedEvaluations   AssessmentResult[]    @relation("EvaluatorResults")
+  notifications          Notification[]
 
   @@map("users")
 }
@@ -61,13 +133,13 @@ model Job {
   department          String
   description         String
   responsibilities    String
-  requiredSkills      String             @default("[]")
-  preferredSkills     String             @default("[]")
-  experienceLevel     String             @default("MID")
+  requiredSkills      String[]
+  preferredSkills     String[]
+  experienceLevel     JobExperienceLevel @default(MID)
   location            String
-  employmentType      String             @default("FULL_TIME")
+  employmentType      JobEmploymentType  @default(FULL_TIME)
   salaryRange         String?
-  status              String             @default("ACTIVE")
+  status              JobStatus          @default(ACTIVE)
   applicationDeadline DateTime?
   recruiterId         String
   recruiter           User               @relation("RecruiterJobs", fields: [recruiterId], references: [id], onDelete: Cascade)
@@ -75,6 +147,8 @@ model Job {
   updatedAt           DateTime           @updatedAt
 
   applications        Application[]
+  interviews          Interview[]
+  codingTests         CodingTest[]
 
   @@index([recruiterId])
   @@index([status])
@@ -88,7 +162,7 @@ model Application {
   job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
   candidateId String
   candidate   User              @relation("CandidateApplications", fields: [candidateId], references: [id], onDelete: Cascade)
-  status      String            @default("APPLIED")
+  status      ApplicationStatus @default(APPLIED)
   resumeUrl   String?
   coverLetter String?
   matchScore  Float?
@@ -96,9 +170,110 @@ model Application {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  interviews         Interview[]
+  assessmentResults  AssessmentResult[]
+
   @@unique([jobId, candidateId])
   @@index([jobId])
   @@index([candidateId])
   @@index([status])
   @@map("applications")
+}
+
+model Interview {
+  id            String          @id @default(uuid())
+  title         String
+  type          InterviewType   @default(TECHNICAL)
+  status        InterviewStatus @default(SCHEDULED)
+  scheduledAt   DateTime
+  durationMins  Int             @default(60)
+  meetingLink   String?
+  chamberRoomId String?
+  notes         String?
+
+  jobId         String
+  job           Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId   String
+  candidate     User            @relation("CandidateInterviews", fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiterId   String
+  recruiter     User            @relation("RecruiterInterviews", fields: [recruiterId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([candidateId])
+  @@index([recruiterId])
+  @@index([jobId])
+  @@index([status])
+  @@map("interviews")
+}
+
+model CodingTest {
+  id              String         @id @default(uuid())
+  title           String
+  description     String
+  difficulty      TestDifficulty @default(MEDIUM)
+  durationMinutes Int            @default(45)
+  category        String
+  status          TestStatus     @default(ASSIGNED)
+  score           Float?
+  passingScore    Float          @default(70.0)
+  starterCode     String?
+  testCasesCount  Int            @default(5)
+  deadline        DateTime?
+
+  candidateId     String
+  candidate       User           @relation("CandidateTests", fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             Job?           @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([candidateId])
+  @@index([status])
+  @@map("coding_tests")
+}
+
+model AssessmentResult {
+  id                 String       @id @default(uuid())
+  overallScore       Float
+  complexityScore    Float        @default(80.0)
+  modularityScore    Float        @default(80.0)
+  systemDesignScore  Float        @default(80.0)
+  rubricSummary      String
+  interviewerNotes   String?
+  recommendation     String       @default("STRONG_HIRE")
+
+  candidateId        String
+  candidate          User         @relation("CandidateResults", fields: [candidateId], references: [id], onDelete: Cascade)
+  evaluatorId        String
+  evaluator          User         @relation("EvaluatorResults", fields: [evaluatorId], references: [id], onDelete: Cascade)
+  applicationId      String?
+  application        Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([candidateId])
+  @@index([evaluatorId])
+  @@map("assessment_results")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, INTERVIEW, APPLICATION
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@map("notifications")
 }

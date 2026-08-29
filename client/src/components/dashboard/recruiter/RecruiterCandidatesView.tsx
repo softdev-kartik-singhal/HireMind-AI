@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import { RecruiterCandidate } from '@/lib/dashboard-data';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,55 +8,91 @@ import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
 import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Users, Search, Sparkles, Mail, FileText, Video, CheckCircle2, ChevronRight } from 'lucide-react';
+import { JobApi } from '@/lib/api-jobs';
+import { Application, Job } from '@/types/job';
+import {
+  Users,
+  Search,
+  Video,
+  FileText,
+  Mail,
+  Phone,
+  Calendar,
+  ExternalLink,
+  Sparkles,
+  Award,
+  CheckCircle2,
+} from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 
 interface Props {
-  candidates: RecruiterCandidate[];
-  onOpenScheduleInterview: (candidateName?: string) => void;
+  onOpenScheduleInterview?: (candidateName?: string) => void;
 }
 
-export function RecruiterCandidatesView({
-  candidates,
-  onOpenScheduleInterview,
-}: Props) {
+export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [stageFilter, setStageFilter] = useState('All');
-  const [selectedCandidate, setSelectedCandidate] = useState<RecruiterCandidate | null>(null);
-  const { success, info } = useToast();
+  const [stageFilter, setStageFilter] = useState('ALL');
+  const [selectedCandidate, setSelectedCandidate] = useState<Application | null>(null);
 
-  const stages = ['All', 'New', 'Screening', 'Interviewing', 'Offered'];
+  const { success, error } = useToast();
 
-  const filteredCandidates = candidates.filter((cand) => {
-    const matchesStage = stageFilter === 'All' || cand.stage === stageFilter;
+  const fetchCandidates = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const jobsRes = await JobApi.getJobs();
+      const allApps: Application[] = [];
+
+      await Promise.all(
+        jobsRes.jobs.map(async (job) => {
+          const applicants = await JobApi.getJobApplicants(job.id);
+          allApps.push(...applicants);
+        })
+      );
+
+      setApplications(allApps);
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
+
+  const filtered = applications.filter((app) => {
+    const matchesStage = stageFilter === 'ALL' || app.status === stageFilter;
     const matchesSearch =
-      cand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cand.role.toLowerCase().includes(searchQuery.toLowerCase());
+      app.candidate?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.candidate?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.job?.title?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStage && matchesSearch;
   });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white">Candidate Pool</h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Review applicant profiles, technical match benchmarks, and schedule evaluations
-          </p>
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-white">Talent Pool & Candidate Pipeline</h2>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Review verified candidate applications, portfolio resumes, and interview eligibility across all company requisitions
+        </p>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Filter and Search */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-          {stages.map((st) => (
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          {['ALL', 'APPLIED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'SELECTED'].map((st) => (
             <button
               key={st}
               onClick={() => setStageFilter(st)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 stageFilter === st
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-purple-600 text-white shadow-sm'
                   : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
@@ -69,7 +104,7 @@ export function RecruiterCandidatesView({
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
           <Input
-            placeholder="Search candidates or skills..."
+            placeholder="Search candidate name or skill..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-9 pl-9 text-xs"
@@ -77,143 +112,154 @@ export function RecruiterCandidatesView({
         </div>
       </div>
 
-      {/* Candidate Table Card */}
-      <Card className="border-slate-800/80 bg-slate-900/60 backdrop-blur-xl overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="border-b border-slate-800 bg-slate-950/40 uppercase text-slate-400">
-                <tr>
-                  <th className="p-4">Candidate</th>
-                  <th className="p-4">Target Role</th>
-                  <th className="p-4">Match %</th>
-                  <th className="p-4">Top Skills</th>
-                  <th className="p-4">Stage</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredCandidates.map((cand) => (
-                  <tr
-                    key={cand.id}
-                    className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                    onClick={() => setSelectedCandidate(cand)}
+      {/* Candidates List */}
+      {isLoading ? (
+        <div className="flex justify-center p-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No candidates found"
+          description="Candidates applying to your published job requisitions will automatically populate here."
+        />
+      ) : (
+        <div className="divide-y divide-slate-800/80 rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden backdrop-blur-xl shadow-xl">
+          {filtered.map((app) => (
+            <div
+              key={app.id}
+              className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-900/90 transition-colors"
+            >
+              <div className="flex items-center gap-3.5 flex-1">
+                <Avatar name={app.candidate?.name || 'Applicant'} size="md" />
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-sm hover:text-purple-300 cursor-pointer" onClick={() => setSelectedCandidate(app)}>
+                      {app.candidate?.name}
+                    </h3>
+                    <Badge variant={app.status === 'SELECTED' ? 'success' : 'role'} roleType="RECRUITER">
+                      {app.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-400">{app.candidate?.headline || app.candidate?.email}</p>
+                  <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-0.5">
+                    <span>Applied for: <strong className="text-slate-300">{app.job?.title}</strong></span>
+                    <span>•</span>
+                    <span>{formatDate(app.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+                {app.matchScore && (
+                  <span className="text-xs font-bold text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/20">
+                    {app.matchScore}% Match
+                  </span>
+                )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedCandidate(app)}
+                  className="text-xs"
+                >
+                  View Profile
+                </Button>
+
+                {onOpenScheduleInterview && (
+                  <Button
+                    size="sm"
+                    onClick={() => onOpenScheduleInterview(app.candidate?.name)}
+                    className="gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs"
                   >
-                    <td className="p-4 font-bold text-white flex items-center gap-3">
-                      <Avatar name={cand.name} size="sm" />
-                      <div>
-                        <span>{cand.name}</span>
-                        <span className="text-[11px] text-slate-400 font-normal block">{cand.email}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-slate-300 font-medium">
-                      {cand.role}
-                      <span className="text-[10px] text-slate-500 block">{cand.experienceYears} yrs experience</span>
-                    </td>
-                    <td className="p-4 font-bold text-emerald-400">
-                      {cand.matchScore}%
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {cand.topSkills.slice(0, 3).map((sk) => (
-                          <span
-                            key={sk}
-                            className="px-2 py-0.5 rounded bg-slate-800/80 text-[10px] text-slate-300"
-                          >
-                            {sk}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge variant="role" roleType="RECRUITER">
-                        {cand.stage}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-right">
-                      <ChevronRight className="h-4 w-4 text-slate-500 inline" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                    <Video className="h-3.5 w-3.5" />
+                    Schedule Round
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Candidate Profile Details Dialog */}
       {selectedCandidate && (
         <Dialog
           isOpen={!!selectedCandidate}
           onClose={() => setSelectedCandidate(null)}
-          title={`Candidate Profile: ${selectedCandidate.name}`}
-          description={`Applied for ${selectedCandidate.role}`}
+          title={selectedCandidate.candidate?.name || 'Candidate Profile'}
+          description={selectedCandidate.candidate?.headline || 'Technical Applicant'}
           maxWidth="lg"
         >
           <div className="space-y-5 text-xs text-slate-300">
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div className="flex items-center gap-3">
-                <Avatar name={selectedCandidate.name} size="lg" />
-                <div>
-                  <h4 className="text-sm font-bold text-white">{selectedCandidate.name}</h4>
-                  <p className="text-slate-400">{selectedCandidate.email}</p>
-                  <p className="text-purple-300 font-semibold mt-0.5">{selectedCandidate.experienceYears} Years Experience</p>
-                </div>
+              <div>
+                <span className="text-[10px] text-slate-500 uppercase font-bold block">Applied Position</span>
+                <span className="font-bold text-white text-sm block mt-0.5">{selectedCandidate.job?.title}</span>
               </div>
-              <div className="text-right">
-                <span className="text-2xl font-black text-emerald-400">{selectedCandidate.matchScore}%</span>
-                <span className="text-[10px] text-slate-400 block">AI Match Score</span>
-              </div>
+              <Badge variant="role" roleType="RECRUITER">{selectedCandidate.status}</Badge>
             </div>
 
             <div className="space-y-2">
-              <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[10px]">
-                Verified Technical Skills
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedCandidate.topSkills.map((sk) => (
-                  <span
-                    key={sk}
-                    className="px-2.5 py-1 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 font-medium"
-                  >
-                    {sk}
-                  </span>
-                ))}
+              <div className="flex items-center gap-2 text-slate-300">
+                <Mail className="h-4 w-4 text-purple-400" />
+                <span>{selectedCandidate.candidate?.email}</span>
               </div>
+              {selectedCandidate.candidate?.phone && (
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Phone className="h-4 w-4 text-emerald-400" />
+                  <span>{selectedCandidate.candidate?.phone}</span>
+                </div>
+              )}
             </div>
 
-            <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/20 text-purple-200 space-y-1">
-              <span className="font-bold block">Current Recruitment Stage: {selectedCandidate.stage}</span>
-              <p className="text-slate-400 text-[11px]">
-                Applicant submitted profile on {selectedCandidate.appliedDate}. Ready for technical panel assignment.
-              </p>
-            </div>
+            {selectedCandidate.coverLetter && (
+              <div className="space-y-1">
+                <span className="font-bold text-white uppercase text-[10px] tracking-wider block">
+                  Cover Note / Pitch
+                </span>
+                <p className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-300 italic leading-relaxed">
+                  &ldquo;{selectedCandidate.coverLetter}&rdquo;
+                </p>
+              </div>
+            )}
+
+            {selectedCandidate.resumeUrl && (
+              <div className="p-3 rounded-lg bg-purple-950/20 border border-purple-500/20 flex items-center justify-between">
+                <span className="text-purple-300 font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Verified Portfolio / CV Link
+                </span>
+                <a
+                  href={selectedCandidate.resumeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 underline"
+                >
+                  Open <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            )}
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                info(`Opening resume for ${selectedCandidate.name}`);
-              }}
-              className="gap-1.5"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              View Resume
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedCandidate(null)}>
+              Close
             </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                const name = selectedCandidate.name;
-                setSelectedCandidate(null);
-                onOpenScheduleInterview(name);
-              }}
-              className="bg-purple-600 hover:bg-purple-500 text-white gap-1.5"
-            >
-              <Video className="h-3.5 w-3.5" />
-              Schedule Interview
-            </Button>
+            {onOpenScheduleInterview && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const name = selectedCandidate.candidate?.name;
+                  setSelectedCandidate(null);
+                  onOpenScheduleInterview(name);
+                }}
+                className="bg-purple-600 hover:bg-purple-500 text-white gap-1.5"
+              >
+                <Video className="h-3.5 w-3.5" />
+                Schedule Interview
+              </Button>
+            )}
           </DialogFooter>
         </Dialog>
       )}
