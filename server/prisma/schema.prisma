@@ -120,6 +120,7 @@ model User {
   interviewSessions      InterviewSession[]    @relation("CandidateInterviewSessions")
   interviewResponses     InterviewResponse[]   @relation("CandidateInterviewResponses")
   interviewEvaluations   InterviewEvaluation[] @relation("EvaluatorInterviewEvaluations")
+  codingSubmissions      CodingSubmission[]    @relation("CandidateCodingSubmissions")
 
   @@map("users")
 }
@@ -350,10 +351,12 @@ model Interview {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
-  questions     InterviewQuestion[]
-  session       InterviewSession?
-  responses     InterviewResponse[]
-  evaluation    InterviewEvaluation?
+  questions         InterviewQuestion[]
+  session           InterviewSession?
+  responses         InterviewResponse[]
+  evaluation        InterviewEvaluation?
+  codingQuestions   CodingQuestion[]
+  codingSubmissions CodingSubmission[]
 
   @@index([candidateId])
   @@index([recruiterId])
@@ -577,4 +580,57 @@ model JobMatchAnalysis {
   @@index([overallScore])
   @@map("job_match_analyses")
 }
+
+model CodingQuestion {
+  id                 String              @id @default(uuid())
+  interviewId        String?
+  interview          Interview?          @relation(fields: [interviewId], references: [id], onDelete: SetNull)
+  title              String
+  description        String              // Detailed Markdown description / problem statement
+  difficulty         InterviewDifficulty @default(MEDIUM)
+  constraints        String[]            @default([])
+  examples           Json?               // [{ input, output, explanation }]
+  testCases          Json?               // [{ id, input, expectedOutput, isHidden, description }]
+  starterCode        Json?               // { javascript: string, python: string, cpp: string, java: string }
+  supportedLanguages String[]            @default(["javascript", "python", "cpp", "java"])
+  category           String              @default("Algorithms")
+  timeLimitMins      Int                 @default(30)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  submissions        CodingSubmission[]
+
+  @@index([interviewId])
+  @@index([difficulty])
+  @@map("coding_questions")
+}
+
+model CodingSubmission {
+  id               String          @id @default(uuid())
+  candidateId      String
+  candidate        User            @relation("CandidateCodingSubmissions", fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewId      String?
+  interview        Interview?      @relation(fields: [interviewId], references: [id], onDelete: SetNull)
+  questionId       String
+  question         CodingQuestion  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  language         String          // javascript, python, cpp, java
+  code             String          // Full solution code
+  status           String          @default("SUBMITTED") // ACCEPTED, WRONG_ANSWER, TIME_LIMIT_EXCEEDED, COMPILATION_ERROR, RUNTIME_ERROR
+  testResults      Json?           // [{ testCaseIndex, passed, input, expectedOutput, actualOutput, executionTimeMs, error }]
+  passedTests      Int             @default(0)
+  totalTests       Int             @default(0)
+  executionTime    Float           @default(0) // ms
+  memoryUsage      Float?          // KB / MB
+  submittedAt      DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([candidateId])
+  @@index([interviewId])
+  @@index([questionId])
+  @@index([status])
+  @@map("coding_submissions")
+}
+
 

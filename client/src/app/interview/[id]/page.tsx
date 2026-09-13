@@ -33,6 +33,8 @@ import {
   Flame,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import LiveCodingIDE from '@/components/coding/LiveCodingIDE';
+import { CodingQuestion, SupportedCodingLanguage, CodingSubmission } from '@/types/coding';
 
 export default function CandidateInterviewPage() {
   const params = useParams();
@@ -47,7 +49,7 @@ export default function CandidateInterviewPage() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [codeAnswer, setCodeAnswer] = useState<string>('');
   const [answerText, setAnswerText] = useState<string>('');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('typescript');
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedCodingLanguage>('javascript');
   const [activeTab, setActiveTab] = useState<'code' | 'text'>('code');
 
   // Autosave and Sync state
@@ -107,11 +109,13 @@ export default function CandidateInterviewPage() {
         if (existingResp) {
           setCodeAnswer(existingResp.codeAnswer || currentQ.starterCode || '');
           setAnswerText(existingResp.answerText || '');
-          setSelectedLanguage(existingResp.codeLanguage || 'typescript');
+          const lang = existingResp.codeLanguage as SupportedCodingLanguage;
+          setSelectedLanguage(['javascript', 'python', 'cpp', 'java'].includes(lang) ? lang : 'javascript');
           setActiveTab(currentQ.type === 'BEHAVIORAL' ? 'text' : 'code');
         } else {
           setCodeAnswer(currentQ.starterCode || '');
           setAnswerText('');
+          setSelectedLanguage('javascript');
           setActiveTab(currentQ.type === 'BEHAVIORAL' ? 'text' : 'code');
         }
       }
@@ -229,11 +233,13 @@ export default function CandidateInterviewPage() {
       if (existingResp) {
         setCodeAnswer(existingResp.codeAnswer || nextQ.starterCode || '');
         setAnswerText(existingResp.answerText || '');
-        setSelectedLanguage(existingResp.codeLanguage || 'typescript');
+        const lang = existingResp.codeLanguage as SupportedCodingLanguage;
+        setSelectedLanguage(['javascript', 'python', 'cpp', 'java'].includes(lang) ? lang : 'javascript');
         setActiveTab(nextQ.type === 'BEHAVIORAL' ? 'text' : 'code');
       } else {
         setCodeAnswer(nextQ.starterCode || '');
         setAnswerText('');
+        setSelectedLanguage('javascript');
         setActiveTab(nextQ.type === 'BEHAVIORAL' ? 'text' : 'code');
       }
       setTestRunOutput(null);
@@ -599,7 +605,7 @@ export default function CandidateInterviewPage() {
 
         {/* Right Side: Interactive Studio (Code & Written Response) */}
         <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-          {/* Studio Header: Tab switch & Language selection */}
+          {/* Studio Header: Tab switch */}
           <div className="h-12 px-6 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <button
@@ -611,7 +617,7 @@ export default function CandidateInterviewPage() {
                 }`}
               >
                 <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Code Studio</span>
+                <span>Live Coding IDE</span>
               </button>
               <button
                 onClick={() => setActiveTab('text')}
@@ -622,82 +628,98 @@ export default function CandidateInterviewPage() {
                 }`}
               >
                 <FileText className="w-3.5 h-3.5 text-blue-400" />
-                <span>Written / Architectural Response</span>
+                <span>Written / Architectural Notes</span>
               </button>
             </div>
 
             {activeTab === 'code' && (
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] text-slate-400">Language:</span>
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
-                >
-                  <option value="typescript">TypeScript</option>
-                  <option value="javascript">JavaScript</option>
-                  <option value="python">Python 3</option>
-                  <option value="go">Go</option>
-                  <option value="sql">SQL (PostgreSQL)</option>
-                </select>
+              <div className="hidden sm:flex items-center space-x-2 text-[11px] text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Sandboxed Execution Environment Ready</span>
               </div>
             )}
           </div>
 
           {/* Editor Body */}
-          <div className="flex-1 flex flex-col p-4 overflow-hidden relative">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             {activeTab === 'code' ? (
-              <div className="flex-1 flex flex-col bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden shadow-inner font-mono text-xs">
-                {/* Editor Banner */}
-                <div className="px-4 py-2 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>solution.{selectedLanguage === 'python' ? 'py' : selectedLanguage === 'go' ? 'go' : 'ts'}</span>
-                  <span>UTF-8 • Tab size: 2</span>
-                </div>
-                <textarea
-                  value={codeAnswer}
-                  onChange={(e) => setCodeAnswer(e.target.value)}
-                  placeholder="// Implement your solution here. Progress auto-saves to cloud..."
-                  className="flex-1 w-full p-4 bg-transparent text-slate-200 resize-none focus:outline-none font-mono text-xs leading-relaxed"
-                  spellCheck="false"
-                />
-              </div>
+              <LiveCodingIDE
+                key={`${currentQuestion.id}-${currentIndex}`}
+                question={{
+                  id: currentQuestion.id,
+                  title: currentQuestion.title,
+                  description: currentQuestion.description,
+                  difficulty: (['EASY', 'MEDIUM', 'HARD'].includes(currentQuestion.difficulty)
+                    ? currentQuestion.difficulty
+                    : 'MEDIUM') as any,
+                  constraints: (currentQuestion as any).constraints || [],
+                  examples: (currentQuestion as any).examples || [],
+                  testCases:
+                    currentQuestion.testCases?.map((tc) => ({
+                      input: tc.input,
+                      expectedOutput: tc.expectedOutput,
+                      description: tc.description,
+                      isHidden: (tc as any).isHidden,
+                    })) || [],
+                  starterCode:
+                    typeof currentQuestion.starterCode === 'object' && currentQuestion.starterCode !== null
+                      ? currentQuestion.starterCode
+                      : undefined,
+                  supportedLanguages: ['javascript', 'python', 'cpp', 'java'],
+                }}
+                interviewId={interviewId}
+                initialCode={codeAnswer}
+                initialLanguage={selectedLanguage}
+                onCodeChange={(code: string, lang: SupportedCodingLanguage) => {
+                  setCodeAnswer(code);
+                  setSelectedLanguage(lang);
+                }}
+                onSubmitted={(sub: CodingSubmission) => {
+                  setSessionData((prev) => {
+                    if (!prev) return prev;
+                    const exists = prev.responses.some((r) => r.questionId === currentQuestion.id);
+                    const updatedResp: InterviewResponse = {
+                      id: sub.id,
+                      interviewId,
+                      questionId: currentQuestion.id,
+                      candidateId: session.candidateId || (interview as any).candidateId || '',
+                      codeAnswer: sub.code,
+                      answerText,
+                      codeLanguage: sub.language,
+                      executionResults: sub.testResults,
+                      timeSpentSeconds: 0,
+                      isSubmitted: true,
+                      submittedAt: sub.submittedAt,
+                    };
+                    const newResponses = exists
+                      ? prev.responses.map((r) => (r.questionId === currentQuestion.id ? updatedResp : r))
+                      : [...prev.responses, updatedResp];
+                    return { ...prev, responses: newResponses };
+                  });
+                }}
+                className="h-full border-0 rounded-none bg-transparent"
+              />
             ) : (
-              <div className="flex-1 flex flex-col bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
-                <div className="px-4 py-2 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Architectural explanation, trade-off analysis & behavioral reflections</span>
-                  <span>Markdown supported</span>
+              <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                <div className="flex-1 flex flex-col bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
+                  <div className="px-4 py-2 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Architectural explanation, trade-off analysis & behavioral reflections</span>
+                    <span>Markdown supported</span>
+                  </div>
+                  <textarea
+                    value={answerText}
+                    onChange={(e) => setAnswerText(e.target.value)}
+                    placeholder="Detail your engineering approach, system architecture, trade-offs, and algorithmic complexity..."
+                    className="flex-1 w-full p-4 bg-transparent text-slate-200 resize-none focus:outline-none text-xs leading-relaxed font-mono"
+                  />
                 </div>
-                <textarea
-                  value={answerText}
-                  onChange={(e) => setAnswerText(e.target.value)}
-                  placeholder="Detail your engineering approach, incident resolution, trade-offs, and design considerations..."
-                  className="flex-1 w-full p-4 bg-transparent text-slate-200 resize-none focus:outline-none text-xs leading-relaxed"
-                />
-              </div>
-            )}
-
-            {/* Test Run Output Drawer */}
-            {testRunOutput && (
-              <div className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-300 max-h-36 overflow-y-auto whitespace-pre-line">
-                {testRunOutput}
               </div>
             )}
           </div>
 
           {/* Bottom Action Controls */}
-          <div className="h-16 px-6 bg-slate-900/70 border-t border-slate-800 flex items-center justify-between">
+          <div className="h-14 px-6 bg-slate-900/70 border-t border-slate-800 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRunTests}
-                disabled={isRunningTests}
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 gap-1.5"
-              >
-                <Play className={`w-3.5 h-3.5 text-indigo-400 ${isRunningTests ? 'animate-spin' : ''}`} />
-                <span>{isRunningTests ? 'Executing...' : 'Run Test Suite'}</span>
-              </Button>
-
               <Button
                 variant="outline"
                 size="sm"
@@ -727,7 +749,7 @@ export default function CandidateInterviewPage() {
                 onClick={handleSubmitCurrentQuestion}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold gap-1.5 px-4 shadow-md shadow-indigo-600/20"
               >
-                <span>Submit & Next</span>
+                <span>{currentIndex === questions.length - 1 ? 'Save & Review' : 'Save & Next Question'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </div>

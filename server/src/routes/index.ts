@@ -10,6 +10,7 @@ import { notificationRoutes } from './notificationRoutes.js';
 import { analyticsRoutes } from './analyticsRoutes.js';
 import { resumeRoutes } from './resumeRoutes.js';
 import { candidateRoutes } from './candidateRoutes.js';
+import { codingRoutes } from './codingRoutes.js';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/notifications', notificationRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/resumes', resumeRoutes);
 router.use('/candidates', candidateRoutes);
+router.use('/coding', codingRoutes);
 
 export const apiRouter = router;
