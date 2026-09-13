@@ -27,10 +27,12 @@ import {
   Users,
   ListOrdered,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { RecruiterQuestionReviewModal } from './RecruiterQuestionReviewModal';
+import { ProctoringTimelineModal } from './ProctoringTimelineModal';
 
 interface Props {
   isScheduleModalOpen: boolean;
@@ -50,6 +52,7 @@ export function RecruiterInterviewsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reviewingInterview, setReviewingInterview] = useState<Interview | null>(null);
+  const [proctoringInterview, setProctoringInterview] = useState<Interview | null>(null);
 
   // Form states configured per prompt requirements
   const [candidateEmail, setCandidateEmail] = useState(initialCandidateName || 'alex.rivera@hiremind.ai');
@@ -225,7 +228,16 @@ export function RecruiterInterviewsView({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+                    <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setProctoringInterview(interview)}
+                      className="gap-1.5 border-indigo-500/30 hover:bg-indigo-500/15 text-indigo-300 text-xs"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Integrity Signals
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -398,6 +410,17 @@ export function RecruiterInterviewsView({
           onClose={() => setReviewingInterview(null)}
           interview={reviewingInterview}
           onQuestionsUpdated={fetchLiveInterviews}
+        />
+      )}
+
+      {/* Proctoring Timeline Modal */}
+      {proctoringInterview && (
+        <ProctoringTimelineModal
+          isOpen={Boolean(proctoringInterview)}
+          onClose={() => setProctoringInterview(null)}
+          interviewId={proctoringInterview.id}
+          interviewTitle={proctoringInterview.title}
+          candidateName={proctoringInterview.candidate?.name || 'Candidate'}
         />
       )}
     </div>

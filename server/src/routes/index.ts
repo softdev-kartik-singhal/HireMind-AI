@@ -12,6 +12,7 @@ import { resumeRoutes } from './resumeRoutes.js';
 import { candidateRoutes } from './candidateRoutes.js';
 import { codingRoutes } from './codingRoutes.js';
 import { voiceRoutes } from './voiceRoutes.js';
+import { proctoringRoutes } from './proctoringRoutes.js';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/resumes', resumeRoutes);
 router.use('/candidates', candidateRoutes);
 router.use('/coding', codingRoutes);
 router.use('/voice', voiceRoutes);
+router.use('/proctoring', proctoringRoutes);
 
 export const apiRouter = router;

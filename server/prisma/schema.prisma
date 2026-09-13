@@ -357,6 +357,7 @@ model Interview {
   evaluation        InterviewEvaluation?
   codingQuestions   CodingQuestion[]
   codingSubmissions CodingSubmission[]
+  proctoringEvents  ProctoringEvent[]
 
   @@index([candidateId])
   @@index([recruiterId])
@@ -643,5 +644,22 @@ model CodingSubmission {
   @@index([status])
   @@map("coding_submissions")
 }
+
+model ProctoringEvent {
+  id          String    @id @default(uuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  eventType   String    // NO_FACE_DETECTED, MULTIPLE_FACES, LOOKING_AWAY, CAMERA_DISCONNECTED, TAB_HIDDEN, FULLSCREEN_EXIT
+  timestamp   DateTime  @default(now())
+  durationMs  Int?      // duration of event in milliseconds if applicable
+  metadata    Json?     // { confidence, faceCount, gazeDirection, resolution, userAgent }
+  createdAt   DateTime  @default(now())
+
+  @@index([interviewId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("proctoring_events")
+}
+
 
 

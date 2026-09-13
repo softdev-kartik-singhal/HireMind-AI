@@ -36,6 +36,8 @@ import {
 import { useToast } from '@/context/ToastContext';
 import LiveCodingIDE from '@/components/coding/LiveCodingIDE';
 import VoiceInterviewStudio from '@/components/voice/VoiceInterviewStudio';
+import { useProctoringMonitor } from '@/hooks/useProctoringMonitor';
+import ProctoringCandidateHUD from '@/components/proctoring/ProctoringCandidateHUD';
 import { CodingQuestion, SupportedCodingLanguage, CodingSubmission } from '@/types/coding';
 
 export default function CandidateInterviewPage() {
@@ -46,6 +48,12 @@ export default function CandidateInterviewPage() {
   const [sessionData, setSessionData] = useState<SessionDataResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Client-side proctoring monitor (Face/Gaze/Tab tracking)
+  const proctoring = useProctoringMonitor({
+    interviewId,
+    enabled: Boolean(sessionData && sessionData.session.status === 'IN_PROGRESS'),
+  });
 
   // Active question index and editor state
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -886,6 +894,14 @@ export default function CandidateInterviewPage() {
           </Button>
         </DialogFooter>
       </Dialog>
+
+      {/* Real-Time Client-Side Proctoring HUD */}
+      {sessionData?.session.status === 'IN_PROGRESS' && (
+        <ProctoringCandidateHUD
+          status={proctoring.status}
+          videoRef={proctoring.videoRef as any}
+        />
+      )}
     </div>
   );
 }
