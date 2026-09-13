@@ -9,6 +9,7 @@ import {
   BrainCircuit,
   LayoutDashboard,
   FileText,
+  FileUp,
   Video,
   Code2,
   Award,
@@ -57,6 +58,7 @@ export function Sidebar({
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'jobs', label: 'Explore Tech Jobs', icon: Briefcase },
+        { id: 'resumes', label: 'My Resumes', icon: FileUp },
         { id: 'applications', label: 'My Applications', icon: FileText },
         { id: 'interviews', label: 'Interviews', icon: Video },
         { id: 'tests', label: 'Coding Tests', icon: Code2 },

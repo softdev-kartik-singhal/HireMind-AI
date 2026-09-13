@@ -20,6 +20,7 @@ import {
   ChevronRight,
   TrendingUp,
   CheckCircle2,
+  FileUp,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -93,6 +94,14 @@ export function CandidateDashboardView({ onNavigateTab }: Props) {
             >
               Explore Tech Jobs
               <ArrowUpRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => onNavigateTab('resumes')}
+              className="gap-2 border-indigo-500/30 bg-indigo-950/40 text-indigo-200 hover:bg-indigo-900/50 hover:text-white"
+            >
+              <FileUp className="h-4 w-4 text-indigo-400" />
+              Manage Resumes
             </Button>
             <Button
               variant="outline"
