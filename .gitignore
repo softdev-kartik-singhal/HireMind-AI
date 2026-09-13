@@ -42,3 +42,8 @@ server/prisma/*.db-journal
 .vscode/
 *.swp
 *.swo
+
+# Secure Local Storage (Private uploads)
+storage_secure/
+server/storage_secure/
+
