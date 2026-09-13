@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
-import { DashboardApi, LiveInterview } from '@/lib/api-dashboard';
+import { InterviewApi } from '@/lib/api-interviews';
+import { Interview, InterviewType, InterviewDifficulty } from '@/types/interview';
 import { JobApi } from '@/lib/api-jobs';
 import { Job } from '@/types/job';
+import { useRouter } from 'next/navigation';
 import {
   Video,
   Calendar,
@@ -23,9 +25,12 @@ import {
   CheckCircle2,
   ExternalLink,
   Users,
+  ListOrdered,
+  Sparkles,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { RecruiterQuestionReviewModal } from './RecruiterQuestionReviewModal';
 
 interface Props {
   isScheduleModalOpen: boolean;
@@ -38,18 +43,22 @@ export function RecruiterInterviewsView({
   onCloseScheduleModal,
   initialCandidateName,
 }: Props) {
-  const [interviews, setInterviews] = useState<LiveInterview[]>([]);
+  const router = useRouter();
+  const [interviews, setInterviews] = useState<Interview[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reviewingInterview, setReviewingInterview] = useState<Interview | null>(null);
 
-  // Form states
-  const [candidateEmail, setCandidateEmail] = useState('alex.rivera@hiremind.ai');
+  // Form states configured per prompt requirements
+  const [candidateEmail, setCandidateEmail] = useState(initialCandidateName || 'alex.rivera@hiremind.ai');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [roundTitle, setRoundTitle] = useState('Distributed State & Architecture Technical Round');
-  const [roundType, setRoundType] = useState('TECHNICAL');
-  const [scheduleDateTime, setScheduleDateTime] = useState('2026-09-02T15:00');
+  const [roundType, setRoundType] = useState<InterviewType>('TECHNICAL');
+  const [difficulty, setDifficulty] = useState<InterviewDifficulty>('MEDIUM');
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [scheduleDateTime, setScheduleDateTime] = useState('2026-09-18T15:00');
   const [durationMins, setDurationMins] = useState(60);
   const [notes, setNotes] = useState('Focus on concurrency primitives, lock-free queues, and postgres indexing.');
 
@@ -59,7 +68,7 @@ export function RecruiterInterviewsView({
     try {
       setIsLoading(true);
       const [liveInterviews, liveJobs] = await Promise.all([
-        DashboardApi.getInterviews(),
+        InterviewApi.getInterviews(),
         JobApi.getJobs(),
       ]);
       setInterviews(liveInterviews);
@@ -83,23 +92,26 @@ export function RecruiterInterviewsView({
     try {
       setIsSubmitting(true);
       const job = jobs.find((j) => j.id === selectedJobId) || jobs[0];
+      if (!job) throw new Error('Please select a job requisition');
 
-      // Schedule in live Supabase PostgreSQL
-      const created = await DashboardApi.scheduleInterview({
+      // Schedule with InterviewApi
+      const created = await InterviewApi.createInterview({
         title: roundTitle,
         type: roundType,
-        jobId: job?.id || 'job-1',
-        candidateId: 'cand-current', // automatically mapped or created
+        difficulty,
+        jobId: job.id,
+        candidateId: candidateEmail.trim(),
         scheduledAt: new Date(scheduleDateTime).toISOString(),
         durationMins,
+        numQuestions,
         notes,
       });
 
       setInterviews((prev) => [created, ...prev]);
-      success(`Technical round scheduled with candidate! Live chamber room generated.`);
+      success(`Technical round scheduled with candidate! Generated ${created.questions?.length || numQuestions} curated questions.`);
       onCloseScheduleModal();
     } catch (err: any) {
-      error(err.message || 'Failed to schedule interview');
+      error(err.response?.data?.message || err.message || 'Failed to schedule interview');
     } finally {
       setIsSubmitting(false);
     }
@@ -161,45 +173,77 @@ export function RecruiterInterviewsView({
             >
               <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="space-y-3 flex-1">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <Badge variant="role" roleType="RECRUITER">
-                      {interview.type.replace('_', ' ')}
-                    </Badge>
-                    <Badge variant={interview.status === 'COMPLETED' ? 'success' : 'default'}>
-                      {interview.status}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <Badge variant="role" roleType="RECRUITER">
+                        {interview.type}
+                      </Badge>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                          interview.status === 'COMPLETED'
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : interview.status === 'IN_PROGRESS'
+                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
+                            : interview.status === 'READY'
+                            ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                            : interview.status === 'EXPIRED'
+                            ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                            : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                        }`}
+                      >
+                        {interview.status}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                        {interview.difficulty || 'MEDIUM'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono text-purple-300 bg-purple-500/10 border border-purple-500/20">
+                        {interview.numQuestions || 5} Questions
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-white hover:text-purple-300 cursor-pointer">
+                        {interview.title}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                        {interview.notes || 'Curated technical interview session'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-300 font-medium">
+                        <Briefcase className="h-3.5 w-3.5 text-purple-400" />
+                        {interview.job?.title}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 text-emerald-400" />
+                        Candidate: {interview.candidate?.name} ({interview.candidate?.email})
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-slate-500" />
+                        {formatDate(interview.scheduledAt)} ({interview.durationMins}m)
+                      </span>
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-base font-bold text-white">{interview.title}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{interview.notes || 'Live code evaluation & system design'}</p>
+                  <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setReviewingInterview(interview)}
+                      className="gap-1.5 border-purple-500/30 hover:bg-purple-500/15 text-purple-300 text-xs"
+                    >
+                      <ListOrdered className="h-3.5 w-3.5" />
+                      Review Questions ({interview.numQuestions || interview.questions?.length || 0})
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/interview/${interview.id}`)}
+                      className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
+                    >
+                      <Video className="h-3.5 w-3.5" />
+                      Open Chamber
+                    </Button>
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
-                    <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                      <User className="h-3.5 w-3.5 text-purple-400" />
-                      Candidate: {interview.candidate?.name || 'Applicant'} ({interview.candidate?.email})
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5 text-slate-500" />
-                      {interview.job?.title}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-slate-500" />
-                      {formatDate(interview.scheduledAt)} ({interview.durationMins} mins)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                  <Button
-                    onClick={() => info(`Opening recruiter chamber console: ${interview.chamberRoomId || 'live-room'}`)}
-                    className="gap-2 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 text-xs"
-                  >
-                    <Video className="h-3.5 w-3.5" />
-                    Enter Panel Chamber
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           ))}
@@ -244,17 +288,44 @@ export function RecruiterInterviewsView({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Interview Format</Label>
+                <Label>Interview Format / Type</Label>
                 <select
                   value={roundType}
-                  onChange={(e) => setRoundType(e.target.value)}
+                  onChange={(e) => setRoundType(e.target.value as InterviewType)}
                   className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900/80 px-3 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="TECHNICAL">TECHNICAL CODE ROUND</option>
-                  <option value="SYSTEM_DESIGN">SYSTEM DESIGN</option>
-                  <option value="LIVE_CODING">LIVE SANDBOX CODING</option>
-                  <option value="BEHAVIORAL">ENGINEERING LEADERSHIP</option>
+                  <option value="TECHNICAL">TECHNICAL (Concepts & Architecture)</option>
+                  <option value="CODING">CODING (Algorithms & Structures)</option>
+                  <option value="BEHAVIORAL">BEHAVIORAL (Leadership & Ownership)</option>
+                  <option value="MIXED">MIXED (Coding + System + Behavioral)</option>
                 </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Difficulty Level</Label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as InterviewDifficulty)}
+                  className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900/80 px-3 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="EASY">EASY (Entry / Junior)</option>
+                  <option value="MEDIUM">MEDIUM (Mid / Senior Standard)</option>
+                  <option value="HARD">HARD (Staff / Principal Depth)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="numQ">Number of Questions</Label>
+                <Input
+                  id="numQ"
+                  type="number"
+                  value={numQuestions}
+                  onChange={(e) => setNumQuestions(parseInt(e.target.value, 10))}
+                  min={1}
+                  max={10}
+                />
               </div>
 
               <div className="space-y-1">
@@ -264,8 +335,8 @@ export function RecruiterInterviewsView({
                   type="number"
                   value={durationMins}
                   onChange={(e) => setDurationMins(parseInt(e.target.value, 10))}
-                  min={30}
-                  max={120}
+                  min={15}
+                  max={180}
                 />
               </div>
             </div>
@@ -318,6 +389,16 @@ export function RecruiterInterviewsView({
             </DialogFooter>
           </form>
         </Dialog>
+      )}
+
+      {/* Review Questions Studio Modal */}
+      {reviewingInterview && (
+        <RecruiterQuestionReviewModal
+          isOpen={!!reviewingInterview}
+          onClose={() => setReviewingInterview(null)}
+          interview={reviewingInterview}
+          onQuestionsUpdated={fetchLiveInterviews}
+        />
       )}
     </div>
   );

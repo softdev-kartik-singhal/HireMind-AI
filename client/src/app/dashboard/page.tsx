@@ -14,6 +14,7 @@ import { DashboardApi } from '@/lib/api-dashboard';
 // Candidate views
 import { CandidateDashboardView } from '@/components/dashboard/candidate/CandidateDashboardView';
 import { CandidateJobsView } from '@/components/dashboard/candidate/CandidateJobsView';
+import { CandidateResumesView } from '@/components/dashboard/candidate/CandidateResumesView';
 import { CandidateApplicationsView } from '@/components/dashboard/candidate/CandidateApplicationsView';
 import { CandidateInterviewsView } from '@/components/dashboard/candidate/CandidateInterviewsView';
 import { CandidateTestsView } from '@/components/dashboard/candidate/CandidateTestsView';
@@ -80,6 +81,7 @@ function DashboardContent() {
     const titles: Record<string, string> = {
       dashboard: 'Dashboard',
       jobs: 'Tech Jobs',
+      resumes: 'My Resumes',
       applications: 'My Applications',
       interviews: 'Interviews',
       tests: 'Coding Tests',
@@ -145,6 +147,7 @@ function DashboardContent() {
                     }}
                   />
                 )}
+                {activeTab === 'resumes' && <CandidateResumesView />}
                 {activeTab === 'applications' && (
                   <CandidateApplicationsView
                     onNavigateToJobs={() => setActiveTab('jobs')}
