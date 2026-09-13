@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
-import { DashboardApi, LiveInterview } from '@/lib/api-dashboard';
+import { useRouter } from 'next/navigation';
+import { InterviewApi } from '@/lib/api-interviews';
+import { Interview } from '@/types/interview';
 import {
   Video,
   Calendar,
@@ -24,16 +26,17 @@ import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 
 export function CandidateInterviewsView() {
-  const [interviews, setInterviews] = useState<LiveInterview[]>([]);
+  const router = useRouter();
+  const [interviews, setInterviews] = useState<Interview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedInterview, setSelectedInterview] = useState<LiveInterview | null>(null);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const { success, info } = useToast();
 
   const fetchInterviews = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await DashboardApi.getInterviews();
+      const data = await InterviewApi.getInterviews();
       setInterviews(data);
     } catch {
       // fallback
@@ -46,8 +49,8 @@ export function CandidateInterviewsView() {
     fetchInterviews();
   }, [fetchInterviews]);
 
-  const handleLaunchChamber = (interview: LiveInterview) => {
-    info(`Launching live interview sandbox: ${interview.chamberRoomId || 'chamber-room'}`);
+  const handleLaunchChamber = (interview: Interview) => {
+    router.push(`/interview/${interview.id}`);
   };
 
   return (
@@ -95,9 +98,24 @@ export function CandidateInterviewsView() {
                     <Badge variant="role" roleType="CANDIDATE">
                       {interview.type.replace('_', ' ')}
                     </Badge>
-                    <Badge variant={interview.status === 'COMPLETED' ? 'success' : 'default'}>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                        interview.status === 'COMPLETED'
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : interview.status === 'IN_PROGRESS'
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse'
+                          : interview.status === 'READY'
+                          ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                          : interview.status === 'EXPIRED'
+                          ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                      }`}
+                    >
                       {interview.status}
-                    </Badge>
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                      {interview.difficulty || 'MEDIUM'}
+                    </span>
                   </div>
 
                   <div>
@@ -112,11 +130,11 @@ export function CandidateInterviewsView() {
                     </span>
                     <span className="flex items-center gap-1.5">
                       <User className="h-3.5 w-3.5 text-purple-400" />
-                      Interviewer: {interview.recruiter?.name}
+                      Interviewer: {interview.recruiter?.name || 'Recruiter'}
                     </span>
                     <span className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-slate-500" />
-                      {formatDate(interview.scheduledAt)} ({interview.durationMins} mins)
+                      {formatDate(interview.scheduledAt)} ({interview.durationMins} mins • {interview.numQuestions || 5} questions)
                     </span>
                   </div>
                 </div>
@@ -124,10 +142,14 @@ export function CandidateInterviewsView() {
                 <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                   <Button
                     onClick={() => handleLaunchChamber(interview)}
-                    className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 text-xs"
+                    className={`gap-2 text-white shadow-lg text-xs ${
+                      interview.status === 'COMPLETED'
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 shadow-slate-900/20'
+                        : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                    }`}
                   >
                     <Video className="h-3.5 w-3.5" />
-                    Enter Live Chamber
+                    {interview.status === 'COMPLETED' ? 'View Submission' : 'Enter Live Chamber'}
                   </Button>
                 </div>
               </CardContent>
