@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { formatDate } from '@/lib/utils';
+import { JobMatchModal } from './JobMatchModal';
 
 interface Props {
   isCreateModalOpen: boolean;
@@ -60,6 +61,7 @@ export function RecruiterJobsView({
   const [jobToEdit, setJobToEdit] = useState<Job | null>(null);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [matchTarget, setMatchTarget] = useState<{ app: Application; job: Job } | null>(null);
 
   // Form states for Create/Edit
   const [formTitle, setFormTitle] = useState('');
@@ -735,6 +737,19 @@ export function RecruiterJobsView({
 
                       {/* Candidate Stage Selector & Action */}
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        {selectedJob && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setMatchTarget({ app, job: selectedJob })}
+                            className="h-8 text-xs gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+                            title="Inspect AI Resume-to-Job compatibility"
+                          >
+                            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                            <span>{app.matchScore ? `${Math.round(app.matchScore)}% AI Fit` : 'AI Match'}</span>
+                          </Button>
+                        )}
+
                         <select
                           value={app.status}
                           onChange={(e) => handleUpdateApplicantStatus(app.id, e.target.value as ApplicationStatus)}
@@ -818,6 +833,23 @@ export function RecruiterJobsView({
             </Button>
           </DialogFooter>
         </Dialog>
+      )}
+
+      {/* AI Resume-to-Job Compatibility Modal */}
+      {matchTarget && (
+        <JobMatchModal
+          isOpen={!!matchTarget}
+          onClose={() => setMatchTarget(null)}
+          jobId={matchTarget.job.id}
+          candidateId={matchTarget.app.candidateId}
+          candidateName={matchTarget.app.candidate?.name}
+          candidateEmail={matchTarget.app.candidate?.email}
+          candidateAvatar={matchTarget.app.candidate?.avatar}
+          candidateHeadline={matchTarget.app.candidate?.headline}
+          jobTitle={matchTarget.job.title}
+          jobDepartment={matchTarget.job.department}
+          jobExperienceLevel={matchTarget.job.experienceLevel}
+        />
       )}
     </div>
   );

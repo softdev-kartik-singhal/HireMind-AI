@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { JobMatchModal } from './JobMatchModal';
 
 interface Props {
   onOpenScheduleInterview?: (candidateName?: string) => void;
@@ -36,6 +37,7 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('ALL');
   const [selectedCandidate, setSelectedCandidate] = useState<Application | null>(null);
+  const [matchTarget, setMatchTarget] = useState<Application | null>(null);
 
   const { success, error } = useToast();
 
@@ -151,11 +153,15 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
               </div>
 
               <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
-                {app.matchScore && (
-                  <span className="text-xs font-bold text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/20">
-                    {app.matchScore}% Match
-                  </span>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setMatchTarget(app)}
+                  className="text-xs gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                  {app.matchScore ? `${Math.round(app.matchScore)}% AI Fit` : 'AI Match'}
+                </Button>
 
                 <Button
                   size="sm"
@@ -243,6 +249,19 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
           </div>
 
           <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const target = selectedCandidate;
+                setMatchTarget(target);
+              }}
+              className="text-xs gap-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30 mr-auto"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              Open AI Match Analysis
+            </Button>
+
             <Button variant="ghost" size="sm" onClick={() => setSelectedCandidate(null)}>
               Close
             </Button>
@@ -262,6 +281,23 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
             )}
           </DialogFooter>
         </Dialog>
+      )}
+
+      {/* AI Resume-to-Job Compatibility Modal */}
+      {matchTarget && (
+        <JobMatchModal
+          isOpen={!!matchTarget}
+          onClose={() => setMatchTarget(null)}
+          jobId={matchTarget.jobId}
+          candidateId={matchTarget.candidateId}
+          candidateName={matchTarget.candidate?.name}
+          candidateEmail={matchTarget.candidate?.email}
+          candidateAvatar={matchTarget.candidate?.avatar}
+          candidateHeadline={matchTarget.candidate?.headline}
+          jobTitle={matchTarget.job?.title}
+          jobDepartment={matchTarget.job?.department}
+          jobExperienceLevel={matchTarget.job?.experienceLevel}
+        />
       )}
     </div>
   );
