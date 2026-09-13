@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
+// Environment variables configuration and Zod validation
 dotenv.config();
 
 const envSchema = z.object({
@@ -15,6 +16,9 @@ const envSchema = z.object({
   JWT_RESET_PASSWORD_EXPIRES_IN: z.string().default('1h'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   APP_URL: z.string().default('http://localhost:3000'),
+  GEMINI_API_KEY: z.string().optional().default(''),
+  AI_PROVIDER: z.enum(['gemini', 'mock']).default('gemini'),
+  AI_MODEL: z.string().default('gemini-1.5-flash'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
