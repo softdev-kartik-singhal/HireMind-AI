@@ -20,6 +20,7 @@ const envSchema = z.object({
   AI_PROVIDER: z.enum(['gemini', 'mock']).default('gemini'),
   AI_MODEL: z.string().default('gemini-1.5-flash'),
   CODE_EXECUTION_PROVIDER: z.string().default('mock'),
+  STT_PROVIDER: z.enum(['mock', 'gemini', 'whisper']).default('mock'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

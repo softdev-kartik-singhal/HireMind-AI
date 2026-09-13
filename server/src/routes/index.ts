@@ -11,6 +11,7 @@ import { analyticsRoutes } from './analyticsRoutes.js';
 import { resumeRoutes } from './resumeRoutes.js';
 import { candidateRoutes } from './candidateRoutes.js';
 import { codingRoutes } from './codingRoutes.js';
+import { voiceRoutes } from './voiceRoutes.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/analytics', analyticsRoutes);
 router.use('/resumes', resumeRoutes);
 router.use('/candidates', candidateRoutes);
 router.use('/coding', codingRoutes);
+router.use('/voice', voiceRoutes);
 
 export const apiRouter = router;

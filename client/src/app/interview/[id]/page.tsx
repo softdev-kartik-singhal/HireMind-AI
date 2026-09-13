@@ -31,9 +31,11 @@ import {
   HelpCircle,
   LogOut,
   Flame,
+  Mic,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import LiveCodingIDE from '@/components/coding/LiveCodingIDE';
+import VoiceInterviewStudio from '@/components/voice/VoiceInterviewStudio';
 import { CodingQuestion, SupportedCodingLanguage, CodingSubmission } from '@/types/coding';
 
 export default function CandidateInterviewPage() {
@@ -50,7 +52,7 @@ export default function CandidateInterviewPage() {
   const [codeAnswer, setCodeAnswer] = useState<string>('');
   const [answerText, setAnswerText] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedCodingLanguage>('javascript');
-  const [activeTab, setActiveTab] = useState<'code' | 'text'>('code');
+  const [activeTab, setActiveTab] = useState<'voice' | 'code' | 'text'>('voice');
 
   // Autosave and Sync state
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -111,12 +113,12 @@ export default function CandidateInterviewPage() {
           setAnswerText(existingResp.answerText || '');
           const lang = existingResp.codeLanguage as SupportedCodingLanguage;
           setSelectedLanguage(['javascript', 'python', 'cpp', 'java'].includes(lang) ? lang : 'javascript');
-          setActiveTab(currentQ.type === 'BEHAVIORAL' ? 'text' : 'code');
+          setActiveTab(currentQ.type === 'CODING' ? 'code' : 'voice');
         } else {
           setCodeAnswer(currentQ.starterCode || '');
           setAnswerText('');
           setSelectedLanguage('javascript');
-          setActiveTab(currentQ.type === 'BEHAVIORAL' ? 'text' : 'code');
+          setActiveTab(currentQ.type === 'CODING' ? 'code' : 'voice');
         }
       }
     } catch (err: any) {
@@ -235,12 +237,12 @@ export default function CandidateInterviewPage() {
         setAnswerText(existingResp.answerText || '');
         const lang = existingResp.codeLanguage as SupportedCodingLanguage;
         setSelectedLanguage(['javascript', 'python', 'cpp', 'java'].includes(lang) ? lang : 'javascript');
-        setActiveTab(nextQ.type === 'BEHAVIORAL' ? 'text' : 'code');
+        setActiveTab(nextQ.type === 'CODING' ? 'code' : 'voice');
       } else {
         setCodeAnswer(nextQ.starterCode || '');
         setAnswerText('');
         setSelectedLanguage('javascript');
-        setActiveTab(nextQ.type === 'BEHAVIORAL' ? 'text' : 'code');
+        setActiveTab(nextQ.type === 'CODING' ? 'code' : 'voice');
       }
       setTestRunOutput(null);
     }
@@ -609,6 +611,17 @@ export default function CandidateInterviewPage() {
           <div className="h-12 px-6 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <button
+                onClick={() => setActiveTab('voice')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+                  activeTab === 'voice'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Mic className="w-3.5 h-3.5 text-rose-400" />
+                <span>Voice Interview</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('code')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
                   activeTab === 'code'
@@ -628,10 +641,16 @@ export default function CandidateInterviewPage() {
                 }`}
               >
                 <FileText className="w-3.5 h-3.5 text-blue-400" />
-                <span>Written / Architectural Notes</span>
+                <span>Written Notes</span>
               </button>
             </div>
 
+            {activeTab === 'voice' && (
+              <div className="hidden sm:flex items-center space-x-2 text-[11px] text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span>Voice AI Ready • Objective Metrics</span>
+              </div>
+            )}
             {activeTab === 'code' && (
               <div className="hidden sm:flex items-center space-x-2 text-[11px] text-slate-400">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -642,7 +661,33 @@ export default function CandidateInterviewPage() {
 
           {/* Editor Body */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-            {activeTab === 'code' ? (
+            {activeTab === 'voice' ? (
+              <VoiceInterviewStudio
+                key={`voice-${currentQuestion.id}-${currentIndex}`}
+                question={currentQuestion}
+                interviewId={interviewId}
+                initialTranscript={answerText}
+                onResponseSubmitted={(result) => {
+                  setSessionData((prev) => {
+                    if (!prev) return prev;
+                    const exists = prev.responses.some((r) => r.questionId === currentQuestion.id);
+                    const updatedResp: InterviewResponse = {
+                      ...result.response,
+                      timeSpentSeconds: Math.round(result.metrics.durationSeconds),
+                    };
+                    const newResponses = exists
+                      ? prev.responses.map((r) => (r.questionId === currentQuestion.id ? updatedResp : r))
+                      : [...prev.responses, updatedResp];
+                    return { ...prev, responses: newResponses };
+                  });
+                  setAnswerText(result.response.transcript || result.response.answerText || '');
+                  if (!result.isLastQuestion) {
+                    handleSelectQuestion(result.nextQuestionIndex);
+                  }
+                }}
+                className="h-full"
+              />
+            ) : activeTab === 'code' ? (
               <LiveCodingIDE
                 key={`${currentQuestion.id}-${currentIndex}`}
                 question={{
