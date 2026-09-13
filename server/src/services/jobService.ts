@@ -4,6 +4,8 @@ import { CreateJobInput, UpdateJobInput, GetJobsQuery, JobStatusType } from '../
 import { JobStatus, JobExperienceLevel, JobEmploymentType, Prisma } from '@prisma/client';
 import { UserRoleType, USER_ROLES } from '../constants/roles.js';
 
+// Job Service for recruitment and application pipeline management
+
 export class JobService {
   /**
    * Create a new job requisition (Recruiter/Admin only)

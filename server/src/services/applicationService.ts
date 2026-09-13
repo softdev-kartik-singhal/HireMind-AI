@@ -5,6 +5,7 @@ import {
   UpdateApplicationStatusInput,
 } from '../validations/applicationValidations.js';
 import { UserRoleType, USER_ROLES } from '../constants/roles.js';
+import { JobMatchService } from './jobMatch.service.js';
 
 export class ApplicationService {
   /**
@@ -65,6 +66,11 @@ export class ApplicationService {
           },
         },
       },
+    });
+
+    // Automatically trigger AI Resume-to-Job Matching in background
+    JobMatchService.getOrCalculateMatch(input.jobId, candidateId).catch((err) => {
+      console.warn('[ApplicationService] Background match calculation deferred:', err.message);
     });
 
     return application;
