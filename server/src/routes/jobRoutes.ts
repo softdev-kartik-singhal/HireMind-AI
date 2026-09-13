@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { JobController } from '../controllers/jobController.js';
+import { JobMatchController } from '../controllers/jobMatch.controller.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { authorize } from '../middlewares/authorize.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
@@ -67,4 +68,20 @@ router.get(
   JobController.getJobApplicants
 );
 
+// Recruiter AI Resume-to-Job Matching
+router.get(
+  '/:jobId/matches/:candidateId',
+  authenticate,
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  JobMatchController.getCandidateJobMatch
+);
+
+router.get(
+  '/:jobId/matches',
+  authenticate,
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  JobMatchController.getJobMatches
+);
+
 export const jobRoutes = router;
+
