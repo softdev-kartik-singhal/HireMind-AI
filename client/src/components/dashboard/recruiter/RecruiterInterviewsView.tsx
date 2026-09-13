@@ -28,11 +28,13 @@ import {
   ListOrdered,
   Sparkles,
   ShieldCheck,
+  Award,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { RecruiterQuestionReviewModal } from './RecruiterQuestionReviewModal';
 import { ProctoringTimelineModal } from './ProctoringTimelineModal';
+import { RecruiterEvaluationModal } from './RecruiterEvaluationModal';
 
 interface Props {
   isScheduleModalOpen: boolean;
@@ -53,6 +55,7 @@ export function RecruiterInterviewsView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reviewingInterview, setReviewingInterview] = useState<Interview | null>(null);
   const [proctoringInterview, setProctoringInterview] = useState<Interview | null>(null);
+  const [evaluatingInterview, setEvaluatingInterview] = useState<Interview | null>(null);
 
   // Form states configured per prompt requirements
   const [candidateEmail, setCandidateEmail] = useState(initialCandidateName || 'alex.rivera@hiremind.ai');
@@ -229,6 +232,15 @@ export function RecruiterInterviewsView({
                   </div>
 
                     <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEvaluatingInterview(interview)}
+                      className="gap-1.5 border-emerald-500/30 hover:bg-emerald-500/15 text-emerald-300 text-xs"
+                    >
+                      <Award className="h-3.5 w-3.5" />
+                      Scorecard & Decision
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -421,6 +433,16 @@ export function RecruiterInterviewsView({
           interviewId={proctoringInterview.id}
           interviewTitle={proctoringInterview.title}
           candidateName={proctoringInterview.candidate?.name || 'Candidate'}
+        />
+      )}
+
+      {/* Recruiter Evaluation Scorecard Modal */}
+      {evaluatingInterview && (
+        <RecruiterEvaluationModal
+          isOpen={Boolean(evaluatingInterview)}
+          onClose={() => setEvaluatingInterview(null)}
+          interview={evaluatingInterview}
+          onEvaluationUpdated={fetchLiveInterviews}
         />
       )}
     </div>

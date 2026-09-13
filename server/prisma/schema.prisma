@@ -460,26 +460,47 @@ model InterviewResponse {
 }
 
 model InterviewEvaluation {
-  id                  String       @id @default(uuid())
-  interviewId         String       @unique
-  interview           Interview    @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  evaluatorId         String?
-  evaluator           User?        @relation("EvaluatorInterviewEvaluations", fields: [evaluatorId], references: [id], onDelete: SetNull)
+  id                        String       @id @default(uuid())
+  interviewId               String       @unique
+  interview                 Interview    @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  evaluatorId               String?
+  evaluator                 User?        @relation("EvaluatorInterviewEvaluations", fields: [evaluatorId], references: [id], onDelete: SetNull)
 
-  overallScore        Float        // 0 - 100
-  technicalScore      Float        @default(0)
-  problemSolvingScore Float        @default(0)
-  communicationScore  Float        @default(0)
-  codeQualityScore    Float        @default(0)
-  recommendation      String       @default("CONSIDER") // STRONG_HIRE, HIRE, CONSIDER, NO_HIRE
-  summary             String       @default("")
-  strengths           String[]     @default([])
-  growthAreas         String[]     @default([])
-  rubricBreakdown     Json?
-  notes               String?
+  // 7 Core Scoring Dimensions (0 - 100)
+  overallScore              Float        // Interview Performance
+  technicalScore            Float        @default(0) // Technical Knowledge
+  problemSolvingScore       Float        @default(0) // Problem Solving
+  codingScore               Float        @default(0) // Coding Performance
+  codeQualityScore          Float        @default(0) // Backward-compatible alias
+  communicationScore        Float        @default(0) // Communication
+  answerRelevanceScore      Float        @default(0) // Answer Relevance
+  skillAlignmentScore       Float        @default(0) // Job Skill Alignment
 
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  // AI Recommendation (STRONG_HIRE, HIRE, MAYBE, NO_HIRE)
+  recommendation            String       @default("MAYBE")
+  summary                   String       @default("")
+
+  // Categorized AI Narrative Feedback
+  strengths                 String[]     @default([])
+  weaknesses                String[]     @default([])
+  missingSkills             String[]     @default([])
+  technicalSummary          String       @default("")
+  communicationSummary       String       @default("")
+  improvementAreas          String[]     @default([])
+  growthAreas               String[]     @default([]) // Backward-compatible alias
+  rubricBreakdown           Json?
+  notes                     String?
+
+  // Recruiter Manual Overrides & Decision Support
+  recruiterRecommendation   String?      // Optional recruiter override
+  recruiterNotes            String?      // Recruiter's personal evaluation notes
+  isOverridden              Boolean      @default(false)
+  overriddenAt              DateTime?
+  overriddenById            String?
+  decisionSupportDisclaimer String       @default("This evaluation is an AI-assisted decision-support summary designed to assist human recruiters. It does not constitute an automated hiring decision.")
+
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 
   @@index([interviewId])
   @@index([evaluatorId])

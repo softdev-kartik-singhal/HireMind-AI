@@ -9,6 +9,9 @@ import { env } from '../../config/env.js';
 import { IAiQuestionGenerator } from './questionGenerator.interface.js';
 import { GeminiQuestionGenerator } from './geminiQuestionGenerator.js';
 import { MockQuestionGenerator } from './mockQuestionGenerator.js';
+import { IAiEvaluationEngine } from './evaluationEngine.interface.js';
+import { GeminiEvaluationEngine } from './geminiEvaluationEngine.js';
+import { MockEvaluationEngine } from './mockEvaluationEngine.js';
 
 let aiParserInstance: IAiResumeParser | null = null;
 let aiMatcherInstance: IAiJobMatcher | null = null;
@@ -65,6 +68,25 @@ export const getAiQuestionGenerator = (): IAiQuestionGenerator => {
   return aiQuestionGenInstance;
 };
 
+let aiEvaluationEngineInstance: IAiEvaluationEngine | null = null;
+
+export const getAiEvaluationEngine = (): IAiEvaluationEngine => {
+  if (!aiEvaluationEngineInstance) {
+    const provider = env.AI_PROVIDER || 'gemini';
+
+    switch (provider) {
+      case 'mock':
+        aiEvaluationEngineInstance = new MockEvaluationEngine();
+        break;
+      case 'gemini':
+      default:
+        aiEvaluationEngineInstance = new GeminiEvaluationEngine();
+        break;
+    }
+  }
+  return aiEvaluationEngineInstance;
+};
+
 export * from './aiParser.interface.js';
 export * from './geminiResumeParser.js';
 export * from './mockResumeParser.js';
@@ -74,4 +96,7 @@ export * from './mockJobMatcher.js';
 export * from './questionGenerator.interface.js';
 export * from './geminiQuestionGenerator.js';
 export * from './mockQuestionGenerator.js';
+export * from './evaluationEngine.interface.js';
+export * from './geminiEvaluationEngine.js';
+export * from './mockEvaluationEngine.js';
 
