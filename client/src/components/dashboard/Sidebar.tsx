@@ -13,6 +13,7 @@ import {
   Video,
   Code2,
   Award,
+  Trophy,
   UserCheck,
   Briefcase,
   Users,
@@ -30,7 +31,8 @@ import { cn } from '@/lib/utils';
 export interface NavItem {
   id: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
 }
 
 interface SidebarProps {
@@ -72,6 +74,7 @@ export function Sidebar({
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'jobs', label: 'Jobs', icon: Briefcase },
         { id: 'candidates', label: 'Candidates', icon: Users },
+        { id: 'ranking', label: 'Candidate Ranking', icon: Trophy },
         { id: 'interviews', label: 'Interviews', icon: Video },
         { id: 'reports', label: 'Reports', icon: FileText },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },

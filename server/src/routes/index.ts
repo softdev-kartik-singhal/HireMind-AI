@@ -14,6 +14,7 @@ import { codingRoutes } from './codingRoutes.js';
 import { voiceRoutes } from './voiceRoutes.js';
 import { proctoringRoutes } from './proctoringRoutes.js';
 import { evaluationRoutes } from './evaluationRoutes.js';
+import { rankingRoutes } from './rankingRoutes.js';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/coding', codingRoutes);
 router.use('/voice', voiceRoutes);
 router.use('/proctoring', proctoringRoutes);
 router.use('/evaluations', evaluationRoutes);
+router.use('/ranking', rankingRoutes);
 
 export const apiRouter = router;

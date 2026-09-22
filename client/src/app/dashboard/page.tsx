@@ -24,6 +24,7 @@ import { CandidateResultsView } from '@/components/dashboard/candidate/Candidate
 import { RecruiterDashboardView } from '@/components/dashboard/recruiter/RecruiterDashboardView';
 import { RecruiterJobsView } from '@/components/dashboard/recruiter/RecruiterJobsView';
 import { RecruiterCandidatesView } from '@/components/dashboard/recruiter/RecruiterCandidatesView';
+import { RecruiterRankingView } from '@/components/dashboard/recruiter/RecruiterRankingView';
 import { RecruiterInterviewsView } from '@/components/dashboard/recruiter/RecruiterInterviewsView';
 import {
   RecruiterReportsView,
@@ -87,6 +88,7 @@ function DashboardContent() {
       tests: 'Coding Tests',
       results: 'Evaluations & Results',
       candidates: 'Candidate Pool',
+      ranking: 'Candidate Ranking',
       reports: 'Reports',
       analytics: 'Analytics',
       settings: 'Settings',
@@ -191,6 +193,14 @@ function DashboardContent() {
                 {activeTab === 'candidates' && (
                   <RecruiterCandidatesView
                     onOpenScheduleInterview={handleOpenScheduleForCandidate}
+                  />
+                )}
+                {activeTab === 'ranking' && (
+                  <RecruiterRankingView
+                    onNavigateToInterview={(candId, jobId) => {
+                      setActiveTab('interviews');
+                      setIsScheduleInterviewOpen(true);
+                    }}
                   />
                 )}
                 {activeTab === 'interviews' && (
