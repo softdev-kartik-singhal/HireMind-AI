@@ -22,10 +22,12 @@ import {
   Sparkles,
   Award,
   CheckCircle2,
+  Scale,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { JobMatchModal } from './JobMatchModal';
+import { CandidateComparisonModal } from './CandidateComparisonModal';
 
 interface Props {
   onOpenScheduleInterview?: (candidateName?: string) => void;
@@ -38,6 +40,9 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
   const [stageFilter, setStageFilter] = useState('ALL');
   const [selectedCandidate, setSelectedCandidate] = useState<Application | null>(null);
   const [matchTarget, setMatchTarget] = useState<Application | null>(null);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
 
   const { success, error } = useToast();
 
@@ -54,6 +59,7 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
         })
       );
 
+      if (jobsRes?.jobs) setJobs(jobsRes.jobs);
       setApplications(allApps);
     } catch {
       // fallback
@@ -133,6 +139,23 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
               className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-900/90 transition-colors"
             >
               <div className="flex items-center gap-3.5 flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedCandidateIds.includes(app.candidateId)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      if (selectedCandidateIds.length >= 4) {
+                        error('Maximum 4 candidates can be compared simultaneously.');
+                        return;
+                      }
+                      setSelectedCandidateIds((prev) => [...prev, app.candidateId]);
+                    } else {
+                      setSelectedCandidateIds((prev) => prev.filter((id) => id !== app.candidateId));
+                    }
+                  }}
+                  className="rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 h-4 w-4 cursor-pointer shrink-0"
+                  title="Select for comparison"
+                />
                 <Avatar name={app.candidate?.name || 'Applicant'} size="md" />
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
@@ -299,6 +322,40 @@ export function RecruiterCandidatesView({ onOpenScheduleInterview }: Props) {
           jobExperienceLevel={matchTarget.job?.experienceLevel}
         />
       )}
+
+      {/* Floating Compare Action Bar */}
+      {selectedCandidateIds.length >= 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-2xl bg-slate-900/95 border border-purple-500/40 shadow-2xl backdrop-blur-xl flex items-center gap-4 animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+            <span className="text-xs font-bold text-white">
+              {selectedCandidateIds.length} Candidates Selected
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setIsCompareOpen(true)}
+            className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs shadow-md shadow-purple-500/25"
+          >
+            <Scale className="h-3.5 w-3.5" />
+            Compare Side-by-Side
+          </Button>
+          <button
+            onClick={() => setSelectedCandidateIds([])}
+            className="text-xs text-slate-400 hover:text-white transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Candidate Comparison Modal */}
+      <CandidateComparisonModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        candidateIds={selectedCandidateIds}
+        allJobs={jobs}
+      />
     </div>
   );
 }

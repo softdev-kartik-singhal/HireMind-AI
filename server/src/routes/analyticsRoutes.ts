@@ -6,7 +6,12 @@ const router = Router();
 
 router.use(authenticate);
 
+// Recruiter Intelligence & Analytics
 router.get('/recruiter', AnalyticsController.getRecruiterAnalytics);
+router.get('/intelligence', AnalyticsController.getRecruiterIntelligence);
+router.post('/compare', AnalyticsController.compareCandidates);
+
+// Candidate & Admin Analytics
 router.get('/candidate', AnalyticsController.getCandidateAnalytics);
 router.get('/admin', AnalyticsController.getAdminAnalytics);
 
